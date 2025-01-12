@@ -1,37 +1,29 @@
-import tkinter as tk
-import customtkinter as ctk
 import sys
 import os
 import threading
 import time
+import tkinter as tk
+from customtkinter import CTk, CTkButton, CTkTextbox, CTkEntry, CTkLabel, CTkCheckBox, StringVar, CTkFrame
 
 class CodeSnapApp:
     def __init__(self, root):
         self.root = root
         self.root.title("代码缩进工具 CodeSnap 1.2 ———— QwejayHuang")
-        self.root.geometry("700x500")  # 设置窗口初始大小
+        self.root.geometry("700x500")
 
         # 设置程序图标
         if getattr(sys, 'frozen', False):  # 判断是否打包
-            base_path = sys._MEIPASS  # 获取打包后的资源路径
+            base_path = sys._MEIPASS
         else:
-            base_path = os.path.dirname(__file__)  # 获取当前脚本路径
+            base_path = os.path.dirname(__file__)
         icon_path = os.path.join(base_path, "icon.ico")
-        self.root.iconbitmap(icon_path)  # 设置程序图标
+        self.root.iconbitmap(icon_path)
 
-        # 全局变量，用于记录累计缩进的字符数
         self.total_indent = 0
-
-        # 自动模式相关变量
         self.auto_mode = False
         self.last_clipboard_content = ""
-        self.processing_clipboard = False  # 标志位，表示是否正在处理剪贴板内容
+        self.processing_clipboard = False
 
-        # 配置主题和颜色
-        ctk.set_appearance_mode("light")  # 设置主题模式（light/dark）
-        ctk.set_default_color_theme("blue")  # 设置颜色主题
-
-        # 初始化界面
         self.setup_ui()
 
         # 启动剪贴板监听线程
@@ -40,63 +32,36 @@ class CodeSnapApp:
 
     def setup_ui(self):
         """初始化用户界面"""
-        # 配置网格布局的行和列的权重，使文本框随窗口大小变化
-        self.root.rowconfigure(1, weight=1)  # 文本框所在行
-        self.root.columnconfigure(0, weight=1)  # 文本框所在列
+        self.root.rowconfigure(1, weight=1)
+        self.root.columnconfigure(0, weight=1)
 
-        # 创建输入框区域
-        input_frame = ctk.CTkFrame(self.root, fg_color="transparent")
+        input_frame = CTkFrame(self.root, fg_color="transparent")
         input_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
 
-        # 添加“缩进”标签
-        indent_label_left = ctk.CTkLabel(input_frame, text="每次缩进", font=("Roboto", 12))
-        indent_label_left.pack(side="left", padx=5, pady=5)
-
-        # 添加输入框
-        self.indent_entry = ctk.CTkEntry(input_frame, width=50, font=("Roboto", 12))
-        self.indent_entry.insert(0, "4")  # 设置默认值
+        CTkLabel(input_frame, text="每次缩进", font=("Roboto", 12)).pack(side="left", padx=5, pady=5)
+        self.indent_entry = CTkEntry(input_frame, width=50, font=("Roboto", 12))
+        self.indent_entry.insert(0, "4")
         self.indent_entry.pack(side="left", padx=5, pady=5)
+        CTkLabel(input_frame, text="字符", font=("Roboto", 12)).pack(side="left", padx=5, pady=5)
 
-        # 添加“字符”标签
-        indent_label_right = ctk.CTkLabel(input_frame, text="字符", font=("Roboto", 12))
-        indent_label_right.pack(side="left", padx=5, pady=5)
-
-        # 创建按钮区域
-        button_frame = ctk.CTkFrame(self.root, fg_color="transparent")
+        button_frame = CTkFrame(self.root, fg_color="transparent")
         button_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
 
-        # 添加“开始”按钮
-        start_button = ctk.CTkButton(button_frame, text="开始", font=("Roboto", 12), width=80, command=self.add_indentation)
-        start_button.pack(side="left", padx=5, pady=5)
+        CTkButton(button_frame, text="开始", font=("Roboto", 12), width=80, command=self.add_indentation).pack(side="left", padx=5, pady=5)
+        CTkButton(button_frame, text="复制", font=("Roboto", 12), width=80, command=self.copy_to_clipboard).pack(side="left", padx=5, pady=5)
+        CTkButton(button_frame, text="粘贴", font=("Roboto", 12), width=80, command=self.paste_from_clipboard).pack(side="left", padx=5, pady=5)
+        CTkButton(button_frame, text="清除", font=("Roboto", 12), width=80, command=self.clear_text).pack(side="left", padx=5, pady=5)
 
-        # 添加“复制”按钮
-        copy_button = ctk.CTkButton(button_frame, text="复制", font=("Roboto", 12), width=80, command=self.copy_to_clipboard)
-        copy_button.pack(side="left", padx=5, pady=5)
+        self.auto_mode_var = tk.BooleanVar(value=False)
+        CTkCheckBox(button_frame, text="自动模式", variable=self.auto_mode_var, command=self.toggle_auto_mode).pack(side="left", padx=5, pady=5)
 
-        # 添加“粘贴”按钮
-        paste_button = ctk.CTkButton(button_frame, text="粘贴", font=("Roboto", 12), width=80, command=self.paste_from_clipboard)
-        paste_button.pack(side="left", padx=5, pady=5)
-
-        # 添加“清除”按钮
-        clear_button = ctk.CTkButton(button_frame, text="清除", font=("Roboto", 12), width=80, command=self.clear_text)
-        clear_button.pack(side="left", padx=5, pady=5)
-
-        # 添加“自动模式”复选框
-        self.auto_mode_var = ctk.BooleanVar(value=False)
-        auto_mode_checkbox = ctk.CTkCheckBox(button_frame, text="自动模式", variable=self.auto_mode_var, command=self.toggle_auto_mode)
-        auto_mode_checkbox.pack(side="left", padx=5, pady=5)
-
-        # 创建文本框用于显示代码
-        self.code_text = ctk.CTkTextbox(self.root, wrap="none", font=("Roboto Mono", 12), fg_color="#ffffff", text_color="#000000")
+        self.code_text = CTkTextbox(self.root, wrap="none", font=("Roboto Mono", 12), fg_color="#ffffff", text_color="#000000")
         self.code_text.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
 
-        # 创建状态栏
-        self.status_var = ctk.StringVar()
+        self.status_var = StringVar()
         self.status_var.set("就绪")
-        status_bar = ctk.CTkLabel(self.root, textvariable=self.status_var, font=("Roboto", 12), anchor="w")
-        status_bar.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+        CTkLabel(self.root, textvariable=self.status_var, font=("Roboto", 12), anchor="w").grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
 
-        # 创建右键菜单
         self.context_menu = tk.Menu(self.root, tearoff=0)
         self.context_menu.add_command(label="复制", command=self.copy_to_clipboard)
         self.context_menu.add_command(label="粘贴", command=self.paste_from_clipboard)
@@ -104,81 +69,57 @@ class CodeSnapApp:
         self.context_menu.add_separator()
         self.context_menu.add_command(label="清除", command=self.clear_text)
 
-        # 绑定右键点击事件
         self.code_text.bind("<Button-3>", self.show_context_menu)
-
-        # 快捷键绑定
-        self.code_text.bind("<Control-Return>", lambda event: self.add_indentation() or "break")  # Ctrl + Enter
-        self.code_text.bind("<Control-l>", lambda event: self.clear_text() or "break")  # Ctrl + L
-        self.code_text.bind("<Control-c>", lambda event: self.copy_to_clipboard() or "break")  # Ctrl + C
-        self.code_text.bind("<Control-v>", lambda event: self.paste_from_clipboard() or "break")  # Ctrl + V
-        self.code_text.bind("<Control-a>", lambda event: self.select_all() or "break")  # Ctrl + A
+        self.code_text.bind("<Control-Return>", lambda event: self.add_indentation() or "break")
+        self.code_text.bind("<Control-l>", lambda event: self.clear_text() or "break")
+        self.code_text.bind("<Control-c>", lambda event: self.copy_to_clipboard() or "break")
+        self.code_text.bind("<Control-v>", lambda event: self.paste_from_clipboard() or "break")
+        self.code_text.bind("<Control-a>", lambda event: self.select_all() or "break")
 
     def toggle_auto_mode(self):
         """切换自动模式"""
         self.auto_mode = self.auto_mode_var.get()
-        if self.auto_mode:
-            self.status_var.set("自动模式已启用")
-        else:
-            self.status_var.set("自动模式已禁用")
+        self.status_var.set("自动模式已启用" if self.auto_mode else "自动模式已禁用")
 
     def clipboard_listener(self):
         """监听剪贴板变化"""
         while True:
-            if self.auto_mode and not self.processing_clipboard:  # 确保不在处理中
+            if self.auto_mode and not self.processing_clipboard:
                 try:
                     clipboard_content = self.root.clipboard_get()
                     if clipboard_content != self.last_clipboard_content:
                         self.last_clipboard_content = clipboard_content
-                        self.processing_clipboard = True  # 设置标志位
+                        self.processing_clipboard = True
                         self.root.after(0, self.process_clipboard_content)
                 except tk.TclError:
                     pass
-            time.sleep(1)  # 每隔1秒检查一次剪贴板
+            time.sleep(1)
 
     def process_clipboard_content(self):
         """处理剪贴板内容"""
         if self.auto_mode:
             try:
-                # 清空文本框并插入剪贴板内容
                 self.code_text.delete("1.0", "end")
                 self.code_text.insert("1.0", self.last_clipboard_content)
-                # 添加缩进
                 self.add_indentation()
-                # 复制缩进后的内容到剪贴板
                 self.copy_to_clipboard()
-                # 更新最后一次处理的剪贴板内容
                 self.last_clipboard_content = self.code_text.get("1.0", "end-1c")
             finally:
-                self.processing_clipboard = False  # 重置标志位
+                self.processing_clipboard = False
 
     def add_indentation(self):
         """添加缩进"""
         try:
-            # 获取输入框中的缩进空格数，如果为空则使用默认值 4
             indent_spaces = int(self.indent_entry.get())
         except ValueError:
-            indent_spaces = 4  # 默认值
+            indent_spaces = 4
 
-        # 累加缩进字符数
         self.total_indent += indent_spaces
+        code = self.code_text.get("1.0", "end-1c")
+        indented_code = "".join(" " * indent_spaces + line if line.strip() else line for line in code.splitlines(True))
 
-        # 获取文本框中的代码
-        code = self.code_text.get("1.0", "end-1c")  # 去除末尾的换行符
-
-        # 在每一行前添加缩进
-        indented_code = ""
-        for line in code.splitlines(True):  # 保留换行符
-            if line.strip():  # 如果行不为空
-                indented_code += " " * indent_spaces + line
-            else:
-                indented_code += line  # 保留空行
-
-        # 清空文本框并插入缩进后的代码
         self.code_text.delete("1.0", "end")
         self.code_text.insert("1.0", indented_code)
-
-        # 更新状态栏
         self.status_var.set(f"缩进成功！累计 {self.total_indent} 字符。")
 
     def clear_text(self):
@@ -206,17 +147,12 @@ class CodeSnapApp:
         """粘贴剪贴板内容"""
         try:
             clipboard_text = self.root.clipboard_get()
-            # 保存当前光标位置
             insert_pos = self.code_text.index("insert")
             try:
-                # 尝试获取选中文本并删除
                 self.code_text.delete("sel.first", "sel.last")
             except tk.TclError:
-                # 没有选中文本，跳过删除操作
                 pass
-            # 在保存的位置插入剪贴板内容
             self.code_text.insert(insert_pos, clipboard_text)
-            # 更新光标位置到插入文本的末尾
             self.code_text.mark_set("insert", f"{insert_pos} + {len(clipboard_text)} chars")
             self.status_var.set("已粘贴内容！")
         except tk.TclError:
@@ -236,8 +172,7 @@ class CodeSnapApp:
         self.context_menu.post(event.x_root, event.y_root)
 
 
-# 主程序入口
 if __name__ == "__main__":
-    root = ctk.CTk()
+    root = CTk()
     app = CodeSnapApp(root)
     root.mainloop()
