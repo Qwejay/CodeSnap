@@ -8,8 +8,8 @@ import time
 class CodeSnapApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("代码缩进工具 CodeSnap 1.1 ———— QwejayHuang")
-        self.root.geometry("800x500")  # 设置窗口初始大小
+        self.root.title("代码缩进工具 CodeSnap 1.2 ———— QwejayHuang")
+        self.root.geometry("700x500")  # 设置窗口初始大小
 
         # 设置程序图标
         if getattr(sys, 'frozen', False):  # 判断是否打包
@@ -66,19 +66,19 @@ class CodeSnapApp:
         button_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
 
         # 添加“开始”按钮
-        start_button = ctk.CTkButton(button_frame, text="开始 (Ctrl+Enter)", font=("Roboto", 12), command=self.add_indentation)
+        start_button = ctk.CTkButton(button_frame, text="开始", font=("Roboto", 12), width=80, command=self.add_indentation)
         start_button.pack(side="left", padx=5, pady=5)
 
         # 添加“复制”按钮
-        copy_button = ctk.CTkButton(button_frame, text="复制 (Ctrl+C)", font=("Roboto", 12), command=self.copy_to_clipboard)
+        copy_button = ctk.CTkButton(button_frame, text="复制", font=("Roboto", 12), width=80, command=self.copy_to_clipboard)
         copy_button.pack(side="left", padx=5, pady=5)
 
         # 添加“粘贴”按钮
-        paste_button = ctk.CTkButton(button_frame, text="粘贴 (Ctrl+V)", font=("Roboto", 12), command=self.paste_from_clipboard)
+        paste_button = ctk.CTkButton(button_frame, text="粘贴", font=("Roboto", 12), width=80, command=self.paste_from_clipboard)
         paste_button.pack(side="left", padx=5, pady=5)
 
         # 添加“清除”按钮
-        clear_button = ctk.CTkButton(button_frame, text="清除 (Ctrl+L)", font=("Roboto", 12), command=self.clear_text)
+        clear_button = ctk.CTkButton(button_frame, text="清除", font=("Roboto", 12), width=80, command=self.clear_text)
         clear_button.pack(side="left", padx=5, pady=5)
 
         # 添加“自动模式”复选框
