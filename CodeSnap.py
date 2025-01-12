@@ -2,6 +2,8 @@ import tkinter as tk
 import customtkinter as ctk
 import sys
 import os
+import threading
+import time
 
 class CodeSnapApp:
     def __init__(self, root):
@@ -20,12 +22,21 @@ class CodeSnapApp:
         # 全局变量，用于记录累计缩进的字符数
         self.total_indent = 0
 
+        # 自动模式相关变量
+        self.auto_mode = False
+        self.last_clipboard_content = ""
+        self.processing_clipboard = False  # 标志位，表示是否正在处理剪贴板内容
+
         # 配置主题和颜色
         ctk.set_appearance_mode("light")  # 设置主题模式（light/dark）
         ctk.set_default_color_theme("blue")  # 设置颜色主题
 
         # 初始化界面
         self.setup_ui()
+
+        # 启动剪贴板监听线程
+        self.clipboard_listener_thread = threading.Thread(target=self.clipboard_listener, daemon=True)
+        self.clipboard_listener_thread.start()
 
     def setup_ui(self):
         """初始化用户界面"""
@@ -70,6 +81,11 @@ class CodeSnapApp:
         clear_button = ctk.CTkButton(button_frame, text="清除 (Ctrl+L)", font=("Roboto", 12), command=self.clear_text)
         clear_button.pack(side="left", padx=5, pady=5)
 
+        # 添加“自动模式”复选框
+        self.auto_mode_var = ctk.BooleanVar(value=False)
+        auto_mode_checkbox = ctk.CTkCheckBox(button_frame, text="自动模式", variable=self.auto_mode_var, command=self.toggle_auto_mode)
+        auto_mode_checkbox.pack(side="left", padx=5, pady=5)
+
         # 创建文本框用于显示代码
         self.code_text = ctk.CTkTextbox(self.root, wrap="none", font=("Roboto Mono", 12), fg_color="#ffffff", text_color="#000000")
         self.code_text.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
@@ -97,6 +113,44 @@ class CodeSnapApp:
         self.code_text.bind("<Control-c>", lambda event: self.copy_to_clipboard() or "break")  # Ctrl + C
         self.code_text.bind("<Control-v>", lambda event: self.paste_from_clipboard() or "break")  # Ctrl + V
         self.code_text.bind("<Control-a>", lambda event: self.select_all() or "break")  # Ctrl + A
+
+    def toggle_auto_mode(self):
+        """切换自动模式"""
+        self.auto_mode = self.auto_mode_var.get()
+        if self.auto_mode:
+            self.status_var.set("自动模式已启用")
+        else:
+            self.status_var.set("自动模式已禁用")
+
+    def clipboard_listener(self):
+        """监听剪贴板变化"""
+        while True:
+            if self.auto_mode and not self.processing_clipboard:  # 确保不在处理中
+                try:
+                    clipboard_content = self.root.clipboard_get()
+                    if clipboard_content != self.last_clipboard_content:
+                        self.last_clipboard_content = clipboard_content
+                        self.processing_clipboard = True  # 设置标志位
+                        self.root.after(0, self.process_clipboard_content)
+                except tk.TclError:
+                    pass
+            time.sleep(1)  # 每隔1秒检查一次剪贴板
+
+    def process_clipboard_content(self):
+        """处理剪贴板内容"""
+        if self.auto_mode:
+            try:
+                # 清空文本框并插入剪贴板内容
+                self.code_text.delete("1.0", "end")
+                self.code_text.insert("1.0", self.last_clipboard_content)
+                # 添加缩进
+                self.add_indentation()
+                # 复制缩进后的内容到剪贴板
+                self.copy_to_clipboard()
+                # 更新最后一次处理的剪贴板内容
+                self.last_clipboard_content = self.code_text.get("1.0", "end-1c")
+            finally:
+                self.processing_clipboard = False  # 重置标志位
 
     def add_indentation(self):
         """添加缩进"""
