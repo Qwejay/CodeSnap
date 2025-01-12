@@ -10,5 +10,5 @@ CodeSnap 是一款简单易用的代码缩进工具。它可以帮助用户快�
 
 打包代码：     
 ```python
-pyinstaller --onefile --windowed --icon=icon.ico --add-data "icon.ico;." CodeSnap.py
+pyinstaller --onefile --noconsole --icon=icon.ico --name=CodeSnap --add-data "icon.ico;." CodeSnap.py
 ```    
