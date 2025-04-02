@@ -3,13 +3,14 @@ import os
 import threading
 import time
 import tkinter as tk
+from tkinter import ttk
 from customtkinter import CTk, CTkButton, CTkTextbox, CTkEntry, CTkLabel, CTkCheckBox, StringVar, CTkFrame
 
 class CodeSnapApp:
     def __init__(self, root):
         self.root = root
         self.root.title("代码缩进工具 CodeSnap 1.2 ———— QwejayHuang")
-        self.root.geometry("700x500")
+        self.root.geometry("800x600")
 
         # 设置程序图标
         if getattr(sys, 'frozen', False):  # 判断是否打包
@@ -24,18 +25,30 @@ class CodeSnapApp:
         self.last_clipboard_content = ""
         self.processing_clipboard = False
 
-        self.setup_ui()
+        # 创建Notebook（TAB控件）
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True)
+
+        # 创建第一个TAB：代码缩进功能
+        self.tab_indent = CTkFrame(self.notebook)
+        self.notebook.add(self.tab_indent, text="代码缩进")
+        self.setup_indent_tab()
+
+        # 创建第二个TAB：批量替换功能
+        self.tab_replace = CTkFrame(self.notebook)
+        self.notebook.add(self.tab_replace, text="批量替换")
+        self.setup_replace_tab()
 
         # 启动剪贴板监听线程
         self.clipboard_listener_thread = threading.Thread(target=self.clipboard_listener, daemon=True)
         self.clipboard_listener_thread.start()
 
-    def setup_ui(self):
-        """初始化用户界面"""
-        self.root.rowconfigure(1, weight=1)
-        self.root.columnconfigure(0, weight=1)
+    def setup_indent_tab(self):
+        """初始化代码缩进TAB"""
+        self.tab_indent.rowconfigure(1, weight=1)
+        self.tab_indent.columnconfigure(0, weight=1)
 
-        input_frame = CTkFrame(self.root, fg_color="transparent")
+        input_frame = CTkFrame(self.tab_indent, fg_color="transparent")
         input_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
 
         CTkLabel(input_frame, text="每次缩进", font=("Roboto", 12)).pack(side="left", padx=5, pady=5)
@@ -44,7 +57,7 @@ class CodeSnapApp:
         self.indent_entry.pack(side="left", padx=5, pady=5)
         CTkLabel(input_frame, text="字符", font=("Roboto", 12)).pack(side="left", padx=5, pady=5)
 
-        button_frame = CTkFrame(self.root, fg_color="transparent")
+        button_frame = CTkFrame(self.tab_indent, fg_color="transparent")
         button_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
 
         CTkButton(button_frame, text="开始", font=("Roboto", 12), width=80, command=self.add_indentation).pack(side="left", padx=5, pady=5)
@@ -55,14 +68,14 @@ class CodeSnapApp:
         self.auto_mode_var = tk.BooleanVar(value=False)
         CTkCheckBox(button_frame, text="自动模式", variable=self.auto_mode_var, command=self.toggle_auto_mode).pack(side="left", padx=5, pady=5)
 
-        self.code_text = CTkTextbox(self.root, wrap="none", font=("Roboto Mono", 12), fg_color="#ffffff", text_color="#000000")
+        self.code_text = CTkTextbox(self.tab_indent, wrap="none", font=("Roboto Mono", 12), fg_color="#ffffff", text_color="#000000")
         self.code_text.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
 
         self.status_var = StringVar()
         self.status_var.set("就绪")
-        CTkLabel(self.root, textvariable=self.status_var, font=("Roboto", 12), anchor="w").grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+        CTkLabel(self.tab_indent, textvariable=self.status_var, font=("Roboto", 12), anchor="w").grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
 
-        self.context_menu = tk.Menu(self.root, tearoff=0)
+        self.context_menu = tk.Menu(self.tab_indent, tearoff=0)
         self.context_menu.add_command(label="复制", command=self.copy_to_clipboard)
         self.context_menu.add_command(label="粘贴", command=self.paste_from_clipboard)
         self.context_menu.add_command(label="全选", command=self.select_all)
@@ -75,6 +88,34 @@ class CodeSnapApp:
         self.code_text.bind("<Control-c>", lambda event: self.copy_to_clipboard() or "break")
         self.code_text.bind("<Control-v>", lambda event: self.paste_from_clipboard() or "break")
         self.code_text.bind("<Control-a>", lambda event: self.select_all() or "break")
+
+    def setup_replace_tab(self):
+        """初始化批量替换TAB"""
+        self.tab_replace.rowconfigure(1, weight=1)
+        self.tab_replace.columnconfigure(0, weight=1)
+
+        # 查找和替换输入框
+        input_frame = CTkFrame(self.tab_replace, fg_color="transparent")
+        input_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+
+        CTkLabel(input_frame, text="查找", font=("Roboto", 12)).pack(side="left", padx=5, pady=5)
+        self.find_entry = CTkTextbox(input_frame, width=200, height=150, font=("Roboto", 12))  # 增加高度
+        self.find_entry.pack(side="left", padx=5, pady=5)
+
+        CTkLabel(input_frame, text="替换为", font=("Roboto", 12)).pack(side="left", padx=5, pady=5)
+        self.replace_entry = CTkTextbox(input_frame, width=200, height=150, font=("Roboto", 12))  # 增加高度
+        self.replace_entry.pack(side="left", padx=5, pady=5)
+
+        CTkButton(input_frame, text="替换", font=("Roboto", 12), width=80, command=self.batch_replace).pack(side="left", padx=5, pady=5)
+
+        # 主文本框
+        self.replace_text = CTkTextbox(self.tab_replace, wrap="none", font=("Roboto Mono", 12), fg_color="#ffffff", text_color="#000000")
+        self.replace_text.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+
+        # 状态栏
+        self.replace_status_var = StringVar()
+        self.replace_status_var.set("就绪")
+        CTkLabel(self.tab_replace, textvariable=self.replace_status_var, font=("Roboto", 12), anchor="w").grid(row=2, column=0, sticky="ew", padx=10, pady=10)
 
     def toggle_auto_mode(self):
         """切换自动模式"""
@@ -171,6 +212,34 @@ class CodeSnapApp:
         """显示右键菜单"""
         self.context_menu.post(event.x_root, event.y_root)
 
+    def batch_replace(self):
+        """批量替换文本"""
+        find_lines = self.find_entry.get("1.0", "end-1c").splitlines()
+        replace_lines = self.replace_entry.get("1.0", "end-1c").splitlines()
+
+        if not find_lines:
+            self.replace_status_var.set("查找内容不能为空！")
+            return
+
+        content = self.replace_text.get("1.0", "end-1c")
+        total_replacements = 0
+        total_deletions = 0
+
+        for find_text, replace_text in zip(find_lines, replace_lines):
+            if not find_text:
+                continue  # 忽略空行
+            count = content.count(find_text)
+            if count > 0:
+                if replace_text:  # 如果替换框不为空，则替换
+                    content = content.replace(find_text, replace_text)
+                    total_replacements += count
+                else:  # 如果替换框为空，则删除
+                    content = content.replace(find_text, "")
+                    total_deletions += count
+
+        self.replace_text.delete("1.0", "end")
+        self.replace_text.insert("1.0", content)
+        self.replace_status_var.set(f"替换完成！共替换 {total_replacements} 处，删除 {total_deletions} 处。")
 
 if __name__ == "__main__":
     root = CTk()
